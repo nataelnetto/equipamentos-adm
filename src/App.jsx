@@ -1,20 +1,34 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group.jsx'
 import { Textarea } from '@/components/ui/textarea.jsx'
-import { CheckCircle, Monitor, Headphones, Keyboard, Mouse, Armchair, FootprintsIcon, Laptop, Sparkles, Clock, Calendar, Zap, Shield, Cpu, Wifi, Lock, Eye, EyeOff } from 'lucide-react'
-import acesseLogo from './assets/acesse-logo.png'
+import { CheckCircle, Monitor, Headphones, Keyboard, Mouse, Armchair, FootprintsIcon, Laptop, Sparkles, Clock, Calendar, Zap, Shield, Cpu, Wifi, Lock, Eye, EyeOff, Settings, X, Filter, RotateCcw, User, Calendar as CalendarIcon } from 'lucide-react'
 import './App.css'
 
 function App() {
+  const [currentView, setCurrentView] = useState('login') // 'login', 'form', 'admin'
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginPassword, setLoginPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [isLoggingIn, setIsLoggingIn] = useState(false)
+
+  // Admin states
+  const [adminPassword, setAdminPassword] = useState('')
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
+  const [adminError, setAdminError] = useState('')
+  const [isAdminLoggingIn, setIsAdminLoggingIn] = useState(false)
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [verificacoes, setVerificacoes] = useState([])
+  const [filtros, setFiltros] = useState({
+    nome: '',
+    dataInicio: '',
+    dataFim: ''
+  })
+  const [selectedVerificacao, setSelectedVerificacao] = useState(null)
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -53,8 +67,8 @@ function App() {
       label: 'Tela (Monitor)', 
       icon: Monitor, 
       options: ['Bom estado', 'Outro'],
-      gradient: 'from-purple-400 via-pink-500 to-red-500',
-      glowColor: 'shadow-purple-500/50'
+      gradient: 'from-pink-400 via-red-500 to-orange-600',
+      glowColor: 'shadow-pink-500/50'
     },
     { 
       key: 'headphone', 
@@ -69,32 +83,32 @@ function App() {
       label: 'Teclado', 
       icon: Keyboard, 
       options: ['Bom estado', 'Uso particular', 'Outro'],
-      gradient: 'from-red-400 via-rose-500 to-pink-600',
-      glowColor: 'shadow-red-500/50'
+      gradient: 'from-orange-400 via-red-500 to-pink-600',
+      glowColor: 'shadow-orange-500/50'
     },
     { 
       key: 'mouse', 
       label: 'Mouse', 
       icon: Mouse, 
       options: ['Bom estado', 'Uso particular', 'Outro'],
-      gradient: 'from-yellow-400 via-orange-500 to-red-500',
-      glowColor: 'shadow-yellow-500/50'
+      gradient: 'from-amber-400 via-orange-500 to-red-600',
+      glowColor: 'shadow-amber-500/50'
     },
     { 
       key: 'cadeira', 
       label: 'Cadeira', 
       icon: Armchair, 
       options: ['Bom estado', 'Outro'],
-      gradient: 'from-indigo-400 via-blue-500 to-cyan-600',
-      glowColor: 'shadow-indigo-500/50'
+      gradient: 'from-blue-400 via-indigo-500 to-purple-600',
+      glowColor: 'shadow-blue-500/50'
     },
     { 
       key: 'apoioPe', 
       label: 'Apoio de pé', 
       icon: FootprintsIcon, 
       options: ['Bom estado', 'Não tenho', 'Outro'],
-      gradient: 'from-pink-400 via-purple-500 to-indigo-600',
-      glowColor: 'shadow-pink-500/50'
+      gradient: 'from-purple-400 via-pink-500 to-rose-600',
+      glowColor: 'shadow-purple-500/50'
     }
   ]
 
@@ -104,15 +118,47 @@ function App() {
     setLoginError('')
 
     // Simular delay de autenticação
-    setTimeout(() => {
-      if (loginPassword === '20Acesse20#') {
-        setIsLoggedIn(true)
-        setLoginError('')
-      } else {
-        setLoginError('Senha incorreta. Tente novamente.')
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    if (loginPassword === '20Acesse20#') {
+      setIsLoggedIn(true)
+      setCurrentView('form')
+      setLoginPassword('')
+    } else {
+      setLoginError('Senha incorreta. Tente novamente.')
+    }
+    setIsLoggingIn(false)
+  }
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault()
+    setIsAdminLoggingIn(true)
+    setAdminError('')
+
+    // Simular delay de autenticação
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    if (adminPassword === 'admin123') {
+      setCurrentView('admin')
+      setShowAdminLogin(false)
+      setAdminPassword('')
+      loadVerificacoes()
+    } else {
+      setAdminError('Senha incorreta. Tente novamente.')
+    }
+    setIsAdminLoggingIn(false)
+  }
+
+  const loadVerificacoes = async () => {
+    try {
+      const response = await fetch('https://mzhyi8c1zd3x.manus.space/api/verificacoes')
+      if (response.ok) {
+        const data = await response.json()
+        setVerificacoes(data)
       }
-      setIsLoggingIn(false)
-    }, 1500)
+    } catch (error) {
+      console.error('Erro ao carregar verificações:', error)
+    }
   }
 
   const handleInputChange = (field, value) => {
@@ -122,210 +168,582 @@ function App() {
     }))
   }
 
-  const getFieldValue = (equipamento) => {
-    const value = formData[equipamento.key]
-    if (value === 'Outro') {
-      const outroValue = formData[`${equipamento.key}Outro`]
-      return outroValue ? `Outro: ${outroValue}` : 'Outro'
-    }
-    return value
+  const handleEquipmentChange = (equipmentKey, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [equipmentKey]: value,
+      [`${equipmentKey}Outro`]: value === 'Outro' ? prev[`${equipmentKey}Outro`] : ''
+    }))
+  }
+
+  const formatWhatsAppMessage = () => {
+    const now = new Date()
+    const data = now.toLocaleDateString('pt-BR')
+    const hora = now.toLocaleTimeString('pt-BR')
+
+    let message = `🔧 *VERIFICAÇÃO DE EQUIPAMENTOS - CSCX*\n\n`
+    message += `👤 *Nome:* ${formData.nome}\n`
+    message += `🔑 *Código Colaborador:* ${formData.codigoColaborador}\n\n`
+    message += `🖥️ *EQUIPAMENTOS:*\n`
+
+    equipamentos.forEach(eq => {
+      const status = formData[eq.key]
+      const outro = formData[`${eq.key}Outro`]
+      if (status) {
+        message += `• ${eq.label}: ${status}`
+        if (status === 'Outro' && outro) {
+          message += `: ${outro}`
+        }
+        message += `\n`
+      } else {
+        message += `• ${eq.label}: \n`
+      }
+    })
+
+    message += `\n💬 *Sugestões/Comentários:* ${formData.sugestoes || 'Nenhuma'}\n\n`
+    message += `📅 Data: ${data}\n`
+    message += `⏰ Hora: ${hora}\n\n`
+
+    return message
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!formData.nome || !formData.codigoColaborador) {
+      alert('Por favor, preencha todos os campos obrigatórios.')
+      return
+    }
+
     setIsSubmitting(true)
 
-    // Preparar mensagem para WhatsApp
-    const message = `🔍 *VERIFICAÇÃO DE EQUIPAMENTOS - CSCX*
+    try {
+      // Enviar dados para o backend
+      const response = await fetch('https://mzhyi8c1zd3x.manus.space/api/verificacoes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
 
-👤 *Nome:* ${formData.nome}
-🆔 *Código Colaborador:* ${formData.codigoColaborador}
-
-📋 *EQUIPAMENTOS:*
-💻 Notebook: ${getFieldValue(equipamentos[0])}
-🖥️ Monitor: ${getFieldValue(equipamentos[1])}
-🎧 Headphone: ${getFieldValue(equipamentos[2])}
-⌨️ Teclado: ${getFieldValue(equipamentos[3])}
-🖱️ Mouse: ${getFieldValue(equipamentos[4])}
-🪑 Cadeira: ${getFieldValue(equipamentos[5])}
-🦶 Apoio de pé: ${getFieldValue(equipamentos[6])}
-
-💬 *Sugestões/Comentários:* ${formData.sugestoes || 'Nenhuma'}
-
-📅 Data: ${new Date().toLocaleDateString('pt-BR')}
-⏰ Hora: ${new Date().toLocaleTimeString('pt-BR')}`
-
-    // Enviar para WhatsApp
-    const whatsappNumber = '5532984218936'
-    const encodedMessage = encodeURIComponent(message)
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
-    
-    // Simular delay de envio
-    setTimeout(() => {
-      window.open(whatsappUrl, '_blank')
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Preparar mensagem do WhatsApp com ID do registro
+        const whatsappMessage = formatWhatsAppMessage() + `🆔 *Registro ID:* ${result.id}`
+        const encodedMessage = encodeURIComponent(whatsappMessage)
+        const whatsappUrl = `https://api.whatsapp.com/send/?phone=5532984218936&text=${encodedMessage}&type=phone_number&app_absent=0`
+        
+        // Abrir WhatsApp
+        window.open(whatsappUrl, '_blank')
+        
+        setSubmitted(true)
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setSubmitted(false)
+          setFormData({
+            nome: '',
+            codigoColaborador: '',
+            notebook: '',
+            notebookOutro: '',
+            monitor: '',
+            monitorOutro: '',
+            headphone: '',
+            headphoneOutro: '',
+            teclado: '',
+            tecladoOutro: '',
+            mouse: '',
+            mouseOutro: '',
+            cadeira: '',
+            cadeiraOutro: '',
+            apoioPe: '',
+            apoioPeOutro: '',
+            sugestoes: ''
+          })
+        }, 3000)
+      } else {
+        throw new Error('Erro ao enviar dados')
+      }
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('Erro ao enviar dados. Tente novamente.')
+    } finally {
       setIsSubmitting(false)
-      setSubmitted(true)
-    }, 2000)
+    }
   }
 
-  // Tela de Login
-  if (!isLoggedIn) {
+  const filtrarVerificacoes = () => {
+    if (!Array.isArray(verificacoes)) {
+      return []
+    }
+    return verificacoes.filter(v => {
+      const nomeMatch = !filtros.nome || v.nome.toLowerCase().includes(filtros.nome.toLowerCase())
+      const dataMatch = (!filtros.dataInicio || new Date(v.data_verificacao) >= new Date(filtros.dataInicio)) &&
+                       (!filtros.dataFim || new Date(v.data_verificacao) <= new Date(filtros.dataFim))
+      return nomeMatch && dataMatch
+    })
+  }
+
+  const getStatusColor = (status) => {
+    if (status === 'Bom estado') return 'bg-green-500'
+    if (status === 'Outro') return 'bg-yellow-500'
+    if (status === 'Uso particular') return 'bg-blue-500'
+    if (status === 'Não tenho') return 'bg-gray-500'
+    return 'bg-gray-400'
+  }
+
+  const countProblemas = (verificacao) => {
+    let count = 0
+    equipamentos.forEach(eq => {
+      if (verificacao[eq.key] === 'Outro') count++
+    })
+    return count
+  }
+
+  // Login Screen
+  if (currentView === 'login') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
         </div>
 
-        <Card className="w-full max-w-md backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
-          <CardHeader className="text-center pb-8">
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-pink-600 rounded-full blur-lg opacity-75 animate-pulse"></div>
-                <div className="relative p-4 bg-gradient-to-r from-orange-500 to-pink-600 rounded-full">
-                  <Shield className="h-12 w-12 text-white" />
-                </div>
-              </div>
+        {/* Admin button */}
+        <button
+          onClick={() => setShowAdminLogin(true)}
+          className="absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all duration-300 border border-white/20"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+
+        <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 text-white relative z-10">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+              <Shield className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
-              ACESSO RESTRITO
-            </CardTitle>
-            <CardDescription className="text-gray-300 text-lg">
-              CSCX - Verificação de Equipamentos
-            </CardDescription>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <div className="h-1 w-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full"></div>
-              <Lock className="h-5 w-5 text-cyan-400" />
-              <div className="h-1 w-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+            <div>
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+                ACESSO RESTRITO
+              </CardTitle>
+              <CardDescription className="text-gray-300 text-lg">
+                CSCX - Verificação de Equipamentos
+              </CardDescription>
+            </div>
+            <div className="flex items-center justify-center space-x-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent flex-1"></div>
+              <Lock className="w-4 h-4 text-blue-400" />
+              <div className="h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent flex-1"></div>
             </div>
           </CardHeader>
-          
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-3">
-                <Label className="text-cyan-300 font-semibold text-sm uppercase tracking-wider flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Senha de Acesso
+          <CardContent className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-green-400 font-semibold flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  SENHA DE ACESSO
                 </Label>
                 <div className="relative">
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
-                    required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-cyan-400 focus:ring-cyan-400/50 backdrop-blur-sm h-14 text-lg rounded-xl pr-12"
                     placeholder="Digite a senha de acesso"
+                    className="bg-white/10 border-white/30 text-white placeholder-gray-400 pr-10"
+                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {loginError && (
-                  <p className="text-red-400 text-sm flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
-                    <Zap className="h-4 w-4" />
-                    {loginError}
-                  </p>
-                )}
               </div>
-
-              <Button
-                type="submit"
-                disabled={isLoggingIn || !loginPassword}
-                className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white py-4 text-lg font-bold disabled:opacity-50 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:scale-105 disabled:hover:scale-100 rounded-xl border-0"
+              
+              {loginError && (
+                <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded border border-red-500/20">
+                  {loginError}
+                </div>
+              )}
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 transition-all duration-300 transform hover:scale-105"
+                disabled={isLoggingIn}
               >
                 {isLoggingIn ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     AUTENTICANDO...
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <Shield className="h-6 w-6 mr-3" />
+                  <div className="flex items-center justify-center gap-2">
+                    <Shield className="w-4 h-4" />
                     ACESSAR SISTEMA
-                    <Zap className="h-6 w-6 ml-3" />
-                  </>
+                  </div>
                 )}
               </Button>
             </form>
-
-            <div className="mt-8 text-center">
-              <div className="flex items-center justify-center space-x-4 text-white/60 text-sm">
-                <div className="flex items-center space-x-2">
-                  <Cpu className="h-4 w-4" />
-                  <span>SISTEMA SEGURO</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Wifi className="h-4 w-4" />
-                  <span>CRIPTOGRAFADO</span>
-                </div>
+            
+            <div className="text-center text-xs text-gray-400 space-y-1">
+              <div className="flex items-center justify-center gap-2">
+                <Shield className="w-3 h-3" />
+                SISTEMA SEGURO
+                <Wifi className="w-3 h-3" />
+                CRIPTOGRAFADO
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <style jsx>{`
-          @keyframes blob {
-            0% {
-              transform: translate(0px, 0px) scale(1);
-            }
-            33% {
-              transform: translate(30px, -50px) scale(1.1);
-            }
-            66% {
-              transform: translate(-20px, 20px) scale(0.9);
-            }
-            100% {
-              transform: translate(0px, 0px) scale(1);
-            }
-          }
-          .animate-blob {
-            animation: blob 7s infinite;
-          }
-          .animation-delay-2000 {
-            animation-delay: 2s;
-          }
-          .animation-delay-4000 {
-            animation-delay: 4s;
-          }
-        `}</style>
+        {/* Admin Login Modal */}
+        {showAdminLogin && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 text-white">
+              <CardHeader className="text-center space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                    <Settings className="w-6 h-6 text-white" />
+                  </div>
+                  <button
+                    onClick={() => setShowAdminLogin(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold">
+                    ACESSO ADMINISTRATIVO
+                  </CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Digite a senha de administrador
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleAdminLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adminPassword" className="text-blue-400 font-semibold flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      SENHA ADMIN
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="adminPassword"
+                        type={showAdminPassword ? "text" : "password"}
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        placeholder="Digite a senha de administrador"
+                        className="bg-white/10 border-white/30 text-white placeholder-gray-400 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                      >
+                        {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {adminError && (
+                    <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded border border-red-500/20">
+                      {adminError}
+                    </div>
+                  )}
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-3 transition-all duration-300"
+                    disabled={isAdminLoggingIn}
+                  >
+                    {isAdminLoggingIn ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        VERIFICANDO...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <Settings className="w-4 h-4" />
+                        ACESSAR ADMIN
+                      </div>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     )
   }
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-        </div>
+  // Admin Screen
+  if (currentView === 'admin') {
+    const verificacoesFiltradas = filtrarVerificacoes()
 
-        <Card className="w-full max-w-md text-center backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
-          <CardContent className="pt-8 pb-8">
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full blur-lg opacity-75 animate-pulse"></div>
-                <CheckCircle className="relative h-20 w-20 text-green-400 animate-bounce" />
-                <div className="absolute -top-2 -right-2">
-                  <Sparkles className="h-8 w-8 text-yellow-400 animate-spin" />
-                </div>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">Administração CSCX</h1>
+                <p className="text-gray-300">Verificação de Equipamentos</p>
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-              Verificação Enviada!
-            </h2>
-            <p className="text-gray-300 mb-6 text-lg">
-              Sua verificação foi enviada via WhatsApp com sucesso. 
-              Sistema CSCX operacional! 🚀
-            </p>
+            <div className="flex items-center gap-4 text-white">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                <span>{verificacoes.length} registro{verificacoes.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <Button
+                onClick={() => setCurrentView('login')}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                Sair
+              </Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <Card className="mb-6 bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Filtros
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-green-400 font-semibold">Nome do Operador</Label>
+                  <Input
+                    placeholder="Digite o nome..."
+                    value={filtros.nome}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, nome: e.target.value }))}
+                    className="bg-white/10 border-white/30 text-white placeholder-gray-400"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-orange-400 font-semibold">Data Início</Label>
+                  <Input
+                    type="date"
+                    value={filtros.dataInicio}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, dataInicio: e.target.value }))}
+                    className="bg-white/10 border-white/30 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-purple-400 font-semibold">Data Fim</Label>
+                  <Input
+                    type="date"
+                    value={filtros.dataFim}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, dataFim: e.target.value }))}
+                    className="bg-white/10 border-white/30 text-white"
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button
+                    onClick={() => setFiltros({ nome: '', dataInicio: '', dataFim: '' })}
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Limpar
+                  </Button>
+                  <Button
+                    onClick={loadVerificacoes}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filtrar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Verificações List */}
+          <div className="space-y-4">
+            {filtrarVerificacoes().map((verificacao) => (
+              <Card
+                key={verificacao.id}
+                className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all cursor-pointer"
+                onClick={() => setSelectedVerificacao(verificacao)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{verificacao.nome}</h3>
+                      <p className="text-gray-300">Código: {verificacao.codigo_colaborador}</p>
+                      <p className="text-gray-400 text-sm">
+                        {new Date(verificacao.data_verificacao).toLocaleDateString('pt-BR')} às{' '}
+                        {new Date(verificacao.data_verificacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {countProblemas(verificacao) > 0 && (
+                        <span className="bg-yellow-500 text-black px-2 py-1 rounded text-sm font-bold">
+                          {countProblemas(verificacao)} problema{countProblemas(verificacao) !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <span className="text-gray-400">→</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {equipamentos.map((eq) => (
+                      <div key={eq.key} className="flex items-center gap-2">
+                        <eq.icon className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-300 text-sm">{eq.label}</span>
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(verificacao[eq.key])}`}></div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filtrarVerificacoes().length === 0 && (
+            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+              <CardContent className="p-8 text-center">
+                <p className="text-gray-300 text-lg">Nenhuma verificação encontrada</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Verification Details Modal */}
+        {selectedVerificacao && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-4xl bg-white/10 backdrop-blur-md border-white/20 text-white max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-2xl">Detalhes da Verificação</CardTitle>
+                  <button
+                    onClick={() => setSelectedVerificacao(null)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-orange-400">
+                      <User className="w-4 h-4" />
+                      <span className="font-semibold">Operador</span>
+                    </div>
+                    <p className="text-white text-lg">{selectedVerificacao.nome}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-blue-400">
+                      <CalendarIcon className="w-4 h-4" />
+                      <span className="font-semibold">Data da Verificação</span>
+                    </div>
+                    <p className="text-white text-lg">
+                      {new Date(selectedVerificacao.data_verificacao).toLocaleDateString('pt-BR')} às{' '}
+                      {new Date(selectedVerificacao.data_verificacao).toLocaleTimeString('pt-BR')}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-green-400">
+                      <Zap className="w-4 h-4" />
+                      <span className="font-semibold">Código</span>
+                    </div>
+                    <p className="text-white text-lg">{selectedVerificacao.codigo_colaborador}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-purple-400">
+                      <Wifi className="w-4 h-4" />
+                      <span className="font-semibold">IP Address</span>
+                    </div>
+                    <p className="text-white text-lg">{selectedVerificacao.ip_address || '127.0.0.1'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold text-white">Status dos Equipamentos</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {equipamentos.map((eq) => (
+                      <Card key={eq.key} className="bg-white/5 border-white/10">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3 mb-2">
+                            <eq.icon className="w-5 h-5 text-orange-400" />
+                            <span className="font-semibold text-white">{eq.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${getStatusColor(selectedVerificacao[eq.key])}`}></div>
+                            <span className={`px-2 py-1 rounded text-sm font-medium ${
+                              selectedVerificacao[eq.key] === 'Bom estado' ? 'bg-green-500/20 text-green-400' :
+                              selectedVerificacao[eq.key] === 'Outro' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {selectedVerificacao[eq.key] || 'Não informado'}
+                            </span>
+                          </div>
+                          {selectedVerificacao[eq.key] === 'Outro' && selectedVerificacao[`${eq.key}_outro`] && (
+                            <div className="mt-2 p-2 bg-yellow-500/10 border-l-4 border-yellow-500 rounded">
+                              <p className="text-yellow-200 text-sm">{selectedVerificacao[`${eq.key}_outro`]}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedVerificacao.sugestoes && (
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-white">Sugestões/Comentários</h3>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <p className="text-gray-300">{selectedVerificacao.sugestoes}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Form Screen
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 text-white text-center">
+          <CardContent className="p-8 space-y-6">
+            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center animate-pulse">
+              <CheckCircle className="w-10 h-10 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-green-400 mb-2">Verificação Enviada!</h2>
+              <p className="text-gray-300">
+                Seus dados foram enviados com sucesso via WhatsApp.
+              </p>
+            </div>
             <Button 
               onClick={() => {
                 setSubmitted(false)
@@ -349,9 +767,8 @@ function App() {
                   sugestoes: ''
                 })
               }}
-              className="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
             >
-              <Zap className="h-5 w-5 mr-2" />
               Nova Verificação
             </Button>
           </CardContent>
@@ -364,250 +781,327 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-        <div className="absolute top-40 right-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-20 left-40 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
       </div>
 
-      {/* Header futurístico */}
-      <div className="relative z-10">
-        <div className="relative bg-gradient-to-br from-orange-500/80 via-red-500/70 via-pink-500/70 to-purple-600/80 backdrop-blur-xl border-b border-white/20 py-16 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/60 via-red-500/50 via-pink-500/50 to-purple-600/60"></div>
-          
-          <div className="container mx-auto px-4 relative z-10">
-            <div className="text-center">
-              <div className="flex justify-center items-center gap-4 mb-6">
-                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                  <Shield className="h-8 w-8 text-white" />
-                </div>
-                <h1 className="text-6xl font-black text-white drop-shadow-2xl tracking-tight">
-                  VERIFICAÇÃO
-                </h1>
-                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                  <Cpu className="h-8 w-8 text-white" />
-                </div>
+      {/* Admin button */}
+      <button
+        onClick={() => setShowAdminLogin(true)}
+        className="absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all duration-300 border border-white/20 z-10"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+
+      <div className="relative z-10 p-4">
+        {/* Header */}
+        <div className="text-center mb-8 pt-8">
+          <div className="bg-gradient-to-br from-orange-400 via-red-500 to-pink-600 p-8 rounded-3xl shadow-2xl backdrop-blur-md border border-white/20 max-w-4xl mx-auto">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <div className="p-3 bg-white/20 rounded-full">
+                <Shield className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-4xl font-bold text-white/90 mb-4 tracking-wide">
-                EQUIPAMENTOS
-              </h2>
-              <div className="flex items-center justify-center space-x-8 text-white/70">
-                <div className="flex items-center space-x-2 bg-white/10 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20">
-                  <Calendar className="h-5 w-5" />
-                  <span className="font-medium">SEXTA-FEIRA</span>
-                </div>
-                <div className="flex items-center space-x-2 bg-white/10 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20">
-                  <Wifi className="h-5 w-5" />
-                  <span className="font-medium">SISTEMA ATIVO</span>
-                </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-wider">
+                VERIFICAÇÃO
+              </h1>
+              <div className="p-3 bg-white/20 rounded-full">
+                <Cpu className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+              EQUIPAMENTOS
+            </h2>
+            
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <Calendar className="w-4 h-4 text-white" />
+                <span className="text-white font-semibold">SEXTA-FEIRA</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                <Wifi className="w-4 h-4 text-white" />
+                <span className="text-white font-semibold">SISTEMA ATIVO</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-12 relative z-10">
-          <div className="max-w-7xl mx-auto">
-            {/* Header do formulário */}
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-xl rounded-2xl px-8 py-4 border border-white/20 shadow-2xl">
-                <div className="p-2 bg-gradient-to-r from-orange-500 to-pink-600 rounded-xl">
-                  <Zap className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">SISTEMA DE MONITORAMENTO</h3>
+        <div className="max-w-4xl mx-auto">
+          {/* Sistema de Monitoramento */}
+          <Card className="mb-8 bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center mb-4">
+                <Zap className="w-8 h-8 text-white" />
               </div>
-              <p className="text-gray-300 text-lg mt-6 max-w-4xl mx-auto leading-relaxed">
-                Sistema inteligente de verificação de equipamentos para garantir máxima performance operacional. 
+              <CardTitle className="text-2xl font-bold text-white bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+                SISTEMA DE MONITORAMENTO
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-gray-300 text-lg leading-relaxed">
+                Sistema inteligente de verificação de equipamentos para garantir máxima performance operacional.
                 Monitoramento em tempo real para continuidade dos serviços CSCX.
               </p>
-            </div>
+            </CardContent>
+          </Card>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Dados pessoais */}
-              <div className="backdrop-blur-xl bg-white/5 rounded-3xl p-8 border border-white/10 shadow-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl shadow-lg">
-                    <Shield className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">IDENTIFICAÇÃO DO OPERADOR</h3>
+          {/* Identificação do Operador */}
+          <Card className="mb-8 bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full">
+                  <User className="w-6 h-6 text-white" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label className="text-cyan-300 font-semibold text-sm uppercase tracking-wider flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Nome do Operador *
-                    </Label>
-                    <Input
-                      type="text"
-                      required
-                      value={formData.nome}
-                      onChange={(e) => handleInputChange('nome', e.target.value)}
-                      className="bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-cyan-400 focus:ring-cyan-400/50 backdrop-blur-sm h-14 text-lg rounded-xl"
-                      placeholder="Digite seu nome completo"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-cyan-300 font-semibold text-sm uppercase tracking-wider flex items-center gap-2">
-                      <Cpu className="h-4 w-4" />
-                      Código de Acesso
-                    </Label>
-                    <Input
-                      type="text"
-                      value={formData.codigoColaborador}
-                      onChange={(e) => handleInputChange('codigoColaborador', e.target.value)}
-                      className="bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-cyan-400 focus:ring-cyan-400/50 backdrop-blur-sm h-14 text-lg rounded-xl"
-                      placeholder="Digite seu código"
-                    />
-                  </div>
+                <CardTitle className="text-2xl font-bold text-white">
+                  IDENTIFICAÇÃO DO OPERADOR
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="nome" className="text-green-400 font-semibold flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                    NOME DO OPERADOR *
+                  </Label>
+                  <Input
+                    id="nome"
+                    value={formData.nome}
+                    onChange={(e) => handleInputChange('nome', e.target.value)}
+                    placeholder="Digite seu nome completo"
+                    className="bg-white/10 border-white/30 text-white placeholder-gray-400 text-lg p-4"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="codigo" className="text-orange-400 font-semibold flex items-center gap-2">
+                    <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                    CÓDIGO DE ACESSO
+                  </Label>
+                  <Input
+                    id="codigo"
+                    value={formData.codigoColaborador}
+                    onChange={(e) => handleInputChange('codigoColaborador', e.target.value)}
+                    placeholder="Digite seu código"
+                    className="bg-white/10 border-white/30 text-white placeholder-gray-400 text-lg p-4"
+                    required
+                  />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Equipamentos em grid moderno */}
-              <div className="space-y-8">
-                <div className="text-center">
-                  <h3 className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-                    <Cpu className="h-8 w-8 text-cyan-400" />
-                    DIAGNÓSTICO DE HARDWARE
-                    <Cpu className="h-8 w-8 text-cyan-400" />
-                  </h3>
-                  <div className="h-1 w-32 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full mx-auto"></div>
+          {/* Diagnóstico de Hardware */}
+          <Card className="mb-8 bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <CardHeader className="text-center">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <div className="p-3 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full">
+                  <Cpu className="w-6 h-6 text-white" />
                 </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-                  {equipamentos.map((equipamento, index) => {
-                    const Icon = equipamento.icon
-                    const showOutroField = formData[equipamento.key] === 'Outro'
-                    
-                    return (
-                      <div key={equipamento.key} className="group">
-                        <div className={`backdrop-blur-xl bg-white/5 rounded-3xl p-6 border border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 hover:bg-white/10 ${equipamento.glowColor} hover:shadow-2xl`}>
-                          <div className="flex items-center gap-4 mb-6">
-                            <div className={`p-4 rounded-2xl bg-gradient-to-r ${equipamento.gradient} shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                              <Icon className="h-8 w-8 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="text-xl font-bold text-white">{equipamento.label}</h4>
-                              <div className="h-0.5 w-16 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full mt-1"></div>
+                <CardTitle className="text-3xl font-bold text-white">
+                  DIAGNÓSTICO DE HARDWARE
+                </CardTitle>
+                <div className="p-3 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full">
+                  <Cpu className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {equipamentos.map((equipamento) => (
+                  <Card key={equipamento.key} className={`bg-gradient-to-br ${equipamento.gradient} p-1 shadow-xl ${equipamento.glowColor} hover:shadow-2xl transition-all duration-300 transform hover:scale-105`}>
+                    <div className="bg-slate-900/80 backdrop-blur-md rounded-lg p-6 h-full">
+                      <div className="flex items-center gap-3 mb-4">
+                        <equipamento.icon className="w-8 h-8 text-white" />
+                        <h3 className="text-xl font-bold text-white">{equipamento.label}</h3>
+                      </div>
+                      
+                      <RadioGroup
+                        value={formData[equipamento.key]}
+                        onValueChange={(value) => handleEquipmentChange(equipamento.key, value)}
+                        className="space-y-3"
+                      >
+                        {equipamento.options.map((option) => (
+                          <div key={option} className="flex items-center space-x-3">
+                            <RadioGroupItem value={option} id={`${equipamento.key}-${option}`} className="border-white/50 text-white" />
+                            <Label 
+                              htmlFor={`${equipamento.key}-${option}`} 
+                              className={`text-lg font-semibold cursor-pointer px-4 py-2 rounded-full transition-all duration-300 ${
+                                formData[equipamento.key] === option 
+                                  ? option === 'Bom estado' 
+                                    ? 'bg-green-500/30 text-green-200 border border-green-400' 
+                                    : option === 'Outro'
+                                    ? 'bg-yellow-500/30 text-yellow-200 border border-yellow-400'
+                                    : option === 'Uso particular'
+                                    ? 'bg-blue-500/30 text-blue-200 border border-blue-400'
+                                    : 'bg-gray-500/30 text-gray-200 border border-gray-400'
+                                  : 'text-white hover:bg-white/10'
+                              }`}
+                            >
+                              {option}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                      
+                      {formData[equipamento.key] === 'Outro' && (
+                        <div className="mt-4 space-y-2 animate-fadeIn">
+                          <Label className="text-yellow-400 font-semibold flex items-center gap-2">
+                            <Zap className="w-4 h-4" />
+                            DESCRIÇÃO DO PROBLEMA
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              value={formData[`${equipamento.key}Outro`]}
+                              onChange={(e) => handleInputChange(`${equipamento.key}Outro`, e.target.value)}
+                              placeholder="Descreva o problema detectado..."
+                              className="bg-gradient-to-r from-orange-500/20 to-pink-500/20 border-orange-400/50 text-white placeholder-gray-300 pl-10"
+                            />
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                              <span className="text-orange-400">🔍</span>
                             </div>
                           </div>
-                          
-                          <RadioGroup
-                            value={formData[equipamento.key]}
-                            onValueChange={(value) => handleInputChange(equipamento.key, value)}
-                            className="space-y-4"
-                          >
-                            {equipamento.options.map((option) => (
-                              <div key={option} className="relative group/option">
-                                <div className="flex items-center space-x-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all duration-300 border border-white/10 hover:border-white/20 cursor-pointer backdrop-blur-sm">
-                                  <RadioGroupItem 
-                                    value={option} 
-                                    id={`${equipamento.key}-${option}`}
-                                    className="text-cyan-400 border-2 border-cyan-400/50 w-6 h-6"
-                                  />
-                                  <Label 
-                                    htmlFor={`${equipamento.key}-${option}`}
-                                    className="text-white cursor-pointer font-medium flex-1 text-lg"
-                                  >
-                                    {option}
-                                  </Label>
-                                  <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full opacity-0 group-hover/option:opacity-100 transition-opacity duration-300"></div>
-                                </div>
-                              </div>
-                            ))}
-                          </RadioGroup>
-
-                          {/* Campo de texto para "Outro" */}
-                          {showOutroField && (
-                            <div className="mt-6 animate-in slide-in-from-top-2 duration-500">
-                              <div className="backdrop-blur-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 p-6 rounded-2xl border border-orange-400/30 shadow-inner">
-                                <Label className="text-orange-300 font-semibold mb-4 block flex items-center gap-2 text-lg">
-                                  <Zap className="h-5 w-5" />
-                                  DESCRIÇÃO DO PROBLEMA
-                                </Label>
-                                <Input
-                                  type="text"
-                                  value={formData[`${equipamento.key}Outro`]}
-                                  onChange={(e) => handleInputChange(`${equipamento.key}Outro`, e.target.value)}
-                                  className="bg-white/10 border-orange-400/50 text-white placeholder-gray-300 focus:border-orange-400 focus:ring-orange-400/50 backdrop-blur-sm h-12 rounded-xl"
-                                  placeholder="Descreva o problema detectado..."
-                                />
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Sugestões */}
-              <div className="backdrop-blur-xl bg-white/5 rounded-3xl p-8 border border-white/10 shadow-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-lg">
-                    <Sparkles className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">RELATÓRIO ADICIONAL</h3>
+          {/* Relatório Adicional */}
+          <Card className="mb-8 bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
+                <CardTitle className="text-2xl font-bold text-white">
+                  RELATÓRIO ADICIONAL
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="sugestoes" className="text-green-400 font-semibold">
+                  Observações, sugestões ou comentários adicionais
+                </Label>
                 <Textarea
+                  id="sugestoes"
                   value={formData.sugestoes}
                   onChange={(e) => handleInputChange('sugestoes', e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-green-400 focus:ring-green-400/50 backdrop-blur-sm rounded-xl min-h-32 text-lg"
-                  placeholder="Observações, sugestões ou comentários adicionais..."
-                  rows={4}
+                  placeholder="Descreva observações, sugestões ou comentários adicionais..."
+                  className="bg-white/10 border-white/30 text-white placeholder-gray-400 min-h-[100px] text-lg"
                 />
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Botão de envio futurístico */}
-              <div className="flex justify-center pt-8">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !formData.nome}
-                  className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white px-16 py-6 text-xl font-bold disabled:opacity-50 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:scale-105 disabled:hover:scale-100 rounded-2xl border-0 backdrop-blur-sm"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                      PROCESSANDO...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-6 w-6 mr-3" />
-                      CONFIRMAR
-                      <Zap className="h-6 w-6 ml-3" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
+          {/* Submit Button */}
+          <div className="text-center mb-8">
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !formData.nome || !formData.codigoColaborador}
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-4 px-12 text-xl rounded-full shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  PROCESSANDO...
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-6 h-6" />
+                  CONFIRMAR
+                  <Sparkles className="w-6 h-6" />
+                </div>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 text-white">
+            <CardHeader className="text-center space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                  <Settings className="w-6 h-6 text-white" />
+                </div>
+                <button
+                  onClick={() => setShowAdminLogin(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold">
+                  ACESSO ADMINISTRATIVO
+                </CardTitle>
+                <CardDescription className="text-gray-300">
+                  Digite a senha de administrador
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="adminPassword" className="text-blue-400 font-semibold flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    SENHA ADMIN
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="adminPassword"
+                      type={showAdminPassword ? "text" : "password"}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Digite a senha de administrador"
+                      className="bg-white/10 border-white/30 text-white placeholder-gray-400 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                
+                {adminError && (
+                  <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded border border-red-500/20">
+                    {adminError}
+                  </div>
+                )}
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-3 transition-all duration-300"
+                  disabled={isAdminLoggingIn}
+                >
+                  {isAdminLoggingIn ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      VERIFICANDO...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      ACESSAR ADMIN
+                    </div>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
