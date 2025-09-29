@@ -403,7 +403,8 @@ function App() {
                 </Label>
                 <Input
                   id="nome"
-                  value={formData.nome}
+                  key="nome-input"
+                  value={formData.nome || ''}
                   onChange={(e) => handleInputChange('nome', e.target.value)}
                   placeholder="Digite seu nome completo"
                   className="bg-white/10 border-white/30 text-white placeholder-gray-400 text-lg p-4"
@@ -417,7 +418,8 @@ function App() {
                 </Label>
                 <Input
                   id="codigo"
-                  value={formData.codigoColaborador}
+                  key="codigo-input"
+                  value={formData.codigoColaborador || ''}
                   onChange={(e) => handleInputChange('codigoColaborador', e.target.value)}
                   placeholder="Digite seu código"
                   className="bg-white/10 border-white/30 text-white placeholder-gray-400 text-lg p-4"
@@ -488,7 +490,8 @@ function App() {
                         </Label>
                         <div className="relative">
                           <Input
-                            value={formData[`${equipamento.key}Outro`]}
+                            key={`${equipamento.key}-outro-input`}
+                            value={formData[`${equipamento.key}Outro`] || ''}
                             onChange={(e) => handleInputChange(`${equipamento.key}Outro`, e.target.value)}
                             placeholder="Descreva o problema detectado..."
                             className="bg-gradient-to-r from-orange-500/20 to-pink-500/20 border-orange-400/50 text-white placeholder-gray-300 pl-10"
@@ -524,7 +527,8 @@ function App() {
               </Label>
               <Textarea
                 id="sugestoes"
-                value={formData.sugestoes}
+                key="sugestoes-textarea"
+                value={formData.sugestoes || ''}
                 onChange={(e) => handleInputChange('sugestoes', e.target.value)}
                 placeholder="Descreva observações, sugestões ou comentários adicionais..."
                 className="bg-white/10 border-white/30 text-white placeholder-gray-400 min-h-[100px] text-lg"
